@@ -10,7 +10,7 @@ def preprocessImage(img, max_width, max_height):
     ratio = brightness / minimum_brightness
     
     ## adjust brightness to get the target brightness
-    img = cv2.convertScaleAbs(img, alpha = 1 / ratio, beta = 100 * (minimum_brightness - brightness))
+    img = cv2.convertScaleAbs(img, alpha = 1 / ratio, beta = 50 * (minimum_brightness - brightness))
         
     ## brightness adjustment attempt 1  - TOO CONTRASTY :(
     #img = cv2.addWeighted(img, 1, np.zeros(img.shape, img.dtype), 0, 0)

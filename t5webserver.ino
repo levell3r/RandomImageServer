@@ -4,6 +4,8 @@
 #include <SPI.h>
 #include "epd_driver.h"
 #include "arduino_secrets.h"
+#include <TimeLib.h>
+
 
 // Lilygo T5 resolution is 960 x 540
 //
@@ -12,14 +14,20 @@ const char* api_url = "http://192.168.1.195:12345/image";
 const char* load_url = "http://192.168.1.195:54321/load";
 const char* shutdown_url = "http://192.168.1.195:54321/shutdown";
 
-//No stealing my stuff  -  change this to yours obvs.
+//No stealing my stuff  -  change this to yours obvs, in arduino_secrets.h
 const char* ssid     = SECRET_SSID;
 const char* password = SECRET_PASS;
 
+//Time syncing stuff (im a use UK time)
+const char* ntpServer = "0.uk.pool.ntp.org";
+const long gmtOffset_sec = 0;
+const int daylightOffset_sec = 0;
+const int nightSleepHour = 23;
+const int dayTime = 7;
 
+long SleepDuration   = 30; //minutes
+long DeepSleepDuration   = 7; //hours
 
-// how long we'll sleep (minutes)
-long SleepDuration   = 30;
 // timer to check how long we've been awake
 long StartTime       = 0;
 // save wifi signal strenght
@@ -82,13 +90,23 @@ void draw_image()
 }
 
 //Sleep Function - to be continued...
-void BeginSleep() {
+void BeginSleep() 
+{
   epd_poweroff_all();
   long SleepTimer = SleepDuration * 60; 
   esp_sleep_enable_timer_wakeup(SleepTimer * 1000000LL); 
-  Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Entering " + String(SleepTimer) + " (secs) of sleep time");
-  Serial.println("Starting deep-sleep period...");
+  Serial.println("Starting sleep period...");
+  esp_deep_sleep_start(); 
+}
+
+void BeginDeepSleep() 
+{
+  epd_poweroff_all();
+  long DeepSleepTimer = SleepDuration * 3600; 
+  esp_sleep_enable_timer_wakeup(DeepSleepTimer * 1000000LL); 
+  Serial.println("Entering " + String(DeepSleepTimer) + " (secs) of sleep time");
+  Serial.println("Starting overnight-sleep period...");
   esp_deep_sleep_start(); 
 }
 
@@ -180,6 +198,8 @@ void setup()
       epd_copy_to_framebuffer(area, imagebuffer, framebuffer);
       // do a fullscreen redraw with the framebuffer
       draw_image();
+      Serial.println("create image");
+      delay(1500);
     }
     // we don't need the buffers anymore, free them
     free(framebuffer);
@@ -187,13 +207,27 @@ void setup()
     
     //Shutdown the imageserver so it will randomly pick new image on next iteration
     shutdown_imageserver();
+    Serial.println("Shutdown image server");
+    delay(1000);
+    Serial.println("Just deciding whether to deepsleep or not...");
+    struct tm timeinfo;
+    if (timeinfo.tm_hour >= nightSleepHour && timeinfo.tm_hour >= dayTime ) {
+      Serial.println("The hour is " + timeinfo.tm_hour);
+      Serial.println("Starting regular sleep period...");
+      BeginSleep();
+    }
 
-    //sleep function for battery saving - to be continued..
-    BeginSleep();
+    else {
+      Serial.println("The hour is " + timeinfo.tm_hour);
+      Serial.println("Starting deep sleep period...");
+      BeginDeepSleep();
+  
+    }
+
 }
 
 
 void loop()
 {
-    delay(3000);
+delay(500);
 }
